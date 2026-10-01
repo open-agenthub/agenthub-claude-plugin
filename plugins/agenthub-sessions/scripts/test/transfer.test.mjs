@@ -116,11 +116,26 @@ test('push keeps the rest of the agent home directory', () => {
     'settings and the rest of the home directory must survive the upload');
 });
 
-test('remoteWorkdir only answers when it matches the slug the pod actually wrote', () => {
-  assert.equal(remoteWorkdir({ slug: POD_SLUG }, { repos: [{ url: 'git@example.com:x.git' }] }), POD_CWD);
+test('remoteWorkdir follows the hub\'s rule of one repository, not of having repositories', () => {
+  // AGENTHUB_WORKDIR is "/workspace/repo" for exactly one repository and "/workspace" otherwise.
+  const repo = url => ({ url });
+  assert.equal(remoteWorkdir({ slug: POD_SLUG }, { repos: [repo('git@example.com:x.git')] }), POD_CWD);
   assert.equal(remoteWorkdir({ slug: '-workspace' }, { repos: [] }), '/workspace');
-  // A session with a custom workdir: no guess is better than a wrong cwd in every line.
+  assert.equal(
+    remoteWorkdir({ slug: '-workspace' }, { repos: [repo('git@example.com:x.git'), repo('git@example.com:y.git')] }),
+    '/workspace',
+    'two repositories land in /workspace/<name> and the agent works from the parent');
+});
+
+test('remoteWorkdir answers nothing rather than guessing wrong', () => {
+  const repo = url => ({ url });
+  // A custom workdir, or a session whose info could not be fetched: no cwd is better than a wrong
+  // one in every line of the transcript, and the CLI then asks for --remote-cwd.
   assert.equal(remoteWorkdir({ slug: '-srv-project' }, { repos: [] }), null);
+  assert.equal(remoteWorkdir({ slug: POD_SLUG }, null), null);
+  // One repository guessed, but the clone failed and the pod fell back to /workspace: the archive
+  // slug disagrees with the guess, so the guess is dropped.
+  assert.equal(remoteWorkdir({ slug: '-workspace' }, { repos: [repo('git@example.com:x.git')] }), null);
 });
 
 test('a pulled session survives a real tar round trip', () => {

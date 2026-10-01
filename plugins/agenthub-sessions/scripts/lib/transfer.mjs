@@ -94,8 +94,13 @@ export function planPush(entries, localFiles, { session, remoteCwd }) {
  * possible: that slug is what the pod wrote, so it is the one the resume will look in.
  */
 export function remoteWorkdir(session, info) {
-  const fromRepo = Array.isArray(info?.repos) && info.repos.length > 0 ? '/workspace/repo' : '/workspace';
+  // Mirrors AGENTHUB_WORKDIR in the hub's pod spec, which is "/workspace/repo" for *exactly* one
+  // repository and "/workspace" otherwise — a session with two repositories gets each one in
+  // /workspace/<name> and works from the parent, so counting "has repos" guesses the wrong one.
+  const repos = Array.isArray(info?.repos) ? info.repos.length : 0;
+  const guess = repos === 1 ? '/workspace/repo' : '/workspace';
   // The slug cannot be decoded back into a path — every separator became the same dash — so it is
-  // used to check the guess rather than to produce one.
-  return projectSlug(fromRepo) === session.slug ? fromRepo : null;
+  // used to check the guess rather than to produce one. That also covers the pod's own fallback to
+  // /workspace when a clone failed and /workspace/repo was never created.
+  return projectSlug(guess) === session.slug ? guess : null;
 }
