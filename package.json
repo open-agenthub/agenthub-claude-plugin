@@ -1,0 +1,13 @@
+{
+  "name": "agenthub-claude-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code plugin marketplace for Open AgentHub",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test \"plugins/agenthub-sessions/scripts/test/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

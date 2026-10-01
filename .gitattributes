@@ -1,0 +1,4 @@
+# The plugin is checked out on Windows, macOS and Linux and the same files are read on all
+# three. Pinning LF keeps a transcript rewritten on one platform byte-identical to one
+# rewritten on another, so a diff between two machines shows real changes only.
+* text=auto eol=lf
