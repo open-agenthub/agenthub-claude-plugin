@@ -1,7 +1,7 @@
 {
   "name": "agenthub-sessions",
   "displayName": "AgentHub Sessions",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Move one Claude Code session between an Open AgentHub server and this machine",
   "author": {
     "name": "Maik Boltze",
