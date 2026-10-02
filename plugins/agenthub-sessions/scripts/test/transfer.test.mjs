@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -43,6 +43,8 @@ test('pull moves the session into this machine\'s project folder and rewrites cw
   assert.equal(plan.slug, 'C--Users-Mb-GIT-agenthub');
   assert.deepEqual(plan.files.map(entry => entry.name), [
     `.claude/projects/C--Users-Mb-GIT-agenthub/${SESSION}.jsonl`,
+    `.claude/projects/C--Users-Mb-GIT-agenthub/${SESSION}/`,
+    `.claude/projects/C--Users-Mb-GIT-agenthub/${SESSION}/subagents/`,
     `.claude/projects/C--Users-Mb-GIT-agenthub/${SESSION}/subagents/sub.jsonl`
   ]);
   const transcript = text(plan.files[0]).trim().split('\n').map(line => JSON.parse(line));
@@ -51,12 +53,23 @@ test('pull moves the session into this machine\'s project folder and rewrites cw
   assert.equal(transcript[1].sessionId, SESSION);
 });
 
+test('pull takes the session and leaves the rest of the project folder behind', () => {
+  // `memory/` sits next to the transcripts and parses as a sidecar of a session called "memory".
+  // Offered as a choice it stops the pull dead, and picked it would resume nothing.
+  const entries = podArchive();
+
+  assert.deepEqual(selectSession(entries), { slug: POD_SLUG, sessionId: SESSION });
+  const plan = planPull(entries, { cwd: LOCAL_CWD, session: selectSession(entries) });
+  assert.ok(!plan.files.some(entry => entry.name.includes('/memory/')));
+});
+
 test('pull leaves the sidecar bytes untouched', () => {
   const entries = podArchive();
 
   const plan = planPull(entries, { cwd: LOCAL_CWD, session: selectSession(entries) });
+  const sidecar = plan.files.find(entry => entry.name.endsWith('sub.jsonl'));
 
-  assert.equal(text(plan.files[1]), '{"subagent":true}\n');
+  assert.equal(text(sidecar), '{"subagent":true}\n');
 });
 
 test('push puts the local transcript under the pod\'s project folder and session id', () => {
@@ -102,8 +115,12 @@ test('push replaces the stored transcript instead of leaving two of them', () =>
   const transcripts = plan.entries.filter(entry => parsePath(entry.name)?.kind === 'transcript');
 
   assert.equal(transcripts.length, 1);
-  // A stale sidecar from the pod would describe subagents the pushed transcript never ran.
-  assert.equal(plan.entries.filter(entry => parsePath(entry.name)?.kind === 'sidecar').length, 0);
+  // A stale sidecar from the pod would describe subagents the pushed transcript never ran. Only
+  // this session's are dropped — the project folder's other contents are not its to delete.
+  assert.equal(plan.entries.filter(entry => {
+    const parsed = parsePath(entry.name);
+    return parsed?.kind === 'sidecar' && parsed.sessionId === SESSION;
+  }).length, 0);
 });
 
 test('push keeps the rest of the agent home directory', () => {
@@ -114,6 +131,8 @@ test('push keeps the rest of the agent home directory', () => {
 
   assert.ok(plan.entries.some(entry => entry.name === '.claude/settings.json'),
     'settings and the rest of the home directory must survive the upload');
+  assert.ok(plan.entries.some(entry => entry.name.endsWith('/memory/notes.md')),
+    'what the agent remembered sits in the project folder and is not part of the session');
 });
 
 test('remoteWorkdir follows the hub\'s rule of one repository, not of having repositories', () => {
@@ -157,11 +176,26 @@ test('writes pulled files below the home directory and reads them back', () => {
 
   const written = writeEntries(plan.files, { home });
 
-  assert.equal(written.length, 2);
+  assert.equal(written.length, 2, 'the two files, not the directories on the way');
   assert.ok(existsSync(join(home, '.claude', 'projects', 'C--Users-Mb-GIT-agenthub', `${SESSION}.jsonl`)));
   assert.deepEqual(listLocalSessions(LOCAL_CWD, home).map(session => session.sessionId), [SESSION]);
   assert.deepEqual(readLocalSession(LOCAL_CWD, SESSION, home).map(entry => entry.name),
-    plan.files.map(entry => entry.name));
+    plan.files.filter(entry => entry.type !== '5').map(entry => entry.name));
+});
+
+test('a directory entry becomes a directory, not an empty file', () => {
+  // Written as a file, the session's sidecar folder blocks its own contents: the entries below it
+  // fail with EEXIST and the pull stops with the transcript already on disk and the subagent
+  // conversations missing.
+  const home = mkdtempSync(join(tmpdir(), 'agenthub-home-'));
+  const entries = podArchive();
+  const plan = planPull(entries, { cwd: LOCAL_CWD, session: selectSession(entries) });
+
+  writeEntries(plan.files, { home });
+
+  const sidecarRoot = join(home, '.claude', 'projects', 'C--Users-Mb-GIT-agenthub', SESSION);
+  assert.ok(statSync(sidecarRoot).isDirectory());
+  assert.equal(readFileSync(join(sidecarRoot, 'subagents', 'sub.jsonl'), 'utf8'), '{"subagent":true}\n');
 });
 
 test('refuses to overwrite a diverged local transcript without --force', () => {
@@ -189,19 +223,33 @@ test('rejects an entry whose name would escape the home directory', () => {
   assert.equal(existsSync(join(home, '..', 'escaped.jsonl')), false);
 });
 
+/**
+ * What `tar czf` inside a pod actually produces: a directory is an entry of its own, and the
+ * project folder holds more than sessions. A fixture of plain files only is what let a pull that
+ * writes directories as empty files pass for a release.
+ */
 function podArchive() {
   return [
     file('.claude/settings.json', '{"theme":"dark"}'),
+    dir(`.claude/projects/${POD_SLUG}/`),
     file(`.claude/projects/${POD_SLUG}/${SESSION}.jsonl`, [
       JSON.stringify({ type: 'mode', mode: 'normal', sessionId: SESSION }),
       JSON.stringify({ type: 'user', cwd: POD_CWD, sessionId: SESSION, uuid: 'remote-turn' })
     ].join('\n') + '\n'),
-    file(`.claude/projects/${POD_SLUG}/${SESSION}/subagents/sub.jsonl`, '{"subagent":true}\n')
+    dir(`.claude/projects/${POD_SLUG}/${SESSION}/`),
+    dir(`.claude/projects/${POD_SLUG}/${SESSION}/subagents/`),
+    file(`.claude/projects/${POD_SLUG}/${SESSION}/subagents/sub.jsonl`, '{"subagent":true}\n'),
+    dir(`.claude/projects/${POD_SLUG}/memory/`),
+    file(`.claude/projects/${POD_SLUG}/memory/notes.md`, '# notes\n')
   ];
 }
 
 function file(name, content = '{}\n') {
   return { name, type: '0', mode: 0o600, mtime: 1_700_000_000, data: new TextEncoder().encode(content) };
+}
+
+function dir(name) {
+  return { name, type: '5', mode: 0o700, mtime: 1_700_000_000, data: new Uint8Array(0) };
 }
 
 function text(entry) {

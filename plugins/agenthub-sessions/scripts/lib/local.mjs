@@ -49,6 +49,9 @@ export function readLocalSession(cwd, sessionId, home = homedir()) {
  * Writes archive entries below the home directory. Refuses a path that would leave it: the entry
  * names come from an archive built elsewhere, and `..` in one of them is how a tar extraction
  * writes outside the directory it was pointed at.
+ *
+ * Returns the files written; directory entries are created but not counted, so a caller can
+ * report what it moved without counting the folders on the way.
  */
 export function writeEntries(files, { home = homedir(), force = false } = {}) {
   const root = join(home, '.');
@@ -56,6 +59,13 @@ export function writeEntries(files, { home = homedir(), force = false } = {}) {
   for (const file of files) {
     const target = join(home, file.name);
     if (!target.startsWith(root)) throw new Error(`Entry escapes the home directory: ${file.name}`);
+    // `tar czf` stores a directory as its own entry, and writing that as a file leaves an empty
+    // file where the session's sidecar folder belongs — every entry below it then fails with
+    // EEXIST, and the pull dies halfway through with the transcript already on disk.
+    if (isDirectory(file)) {
+      mkdirSync(target, { recursive: true });
+      continue;
+    }
     if (existsSync(target) && !force) {
       const existing = readFileSync(target);
       if (!existing.equals(Buffer.from(file.data))) {
@@ -69,6 +79,15 @@ export function writeEntries(files, { home = homedir(), force = false } = {}) {
     written.push(target);
   }
   return written;
+}
+
+/**
+ * Both signals for a directory entry: the tar type flag, and the trailing slash every tar writes
+ * with it. Archives reaching this point come from whichever tar ran in the pod, so neither is
+ * relied on alone.
+ */
+function isDirectory(entry) {
+  return entry.type === '5' || entry.name.endsWith('/');
 }
 
 function entryFor(name, path) {

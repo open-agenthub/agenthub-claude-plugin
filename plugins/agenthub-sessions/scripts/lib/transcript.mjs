@@ -16,14 +16,19 @@ export function projectSlug(cwd) {
   return cwd.replace(/[^a-zA-Z0-9]/g, '-');
 }
 
-/** Project folders present in a state archive, with the transcripts each one holds. */
+/**
+ * Project folders present in a state archive, with the transcripts each one holds. A session is
+ * counted from its `<sessionId>.jsonl` alone: a project folder also holds directories that are
+ * not sessions — `memory/` is one Claude Code itself writes — and those parse as a sidecar of a
+ * session by that name, which `--resume` would then be offered and could not open.
+ */
 export function listProjects(entries) {
   const projects = new Map();
   for (const entry of entries) {
     const parsed = parsePath(entry.name);
     if (!parsed) continue;
     if (!projects.has(parsed.slug)) projects.set(parsed.slug, { slug: parsed.slug, sessions: new Set() });
-    if (parsed.sessionId) projects.get(parsed.slug).sessions.add(parsed.sessionId);
+    if (parsed.kind === 'transcript') projects.get(parsed.slug).sessions.add(parsed.sessionId);
   }
   return [...projects.values()].map(project => ({ slug: project.slug, sessions: [...project.sessions] }));
 }
