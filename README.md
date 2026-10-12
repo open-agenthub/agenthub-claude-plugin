@@ -18,7 +18,7 @@ rewrite, and coming back is an upload.
 ## Install
 
 ```bash
-claude plugin marketplace add open-agenthub/agenthub-claude-plugin
+claude plugin marketplace add open-agenthub/plugins
 claude plugin install agenthub-sessions@open-agenthub
 ```
 
