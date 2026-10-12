@@ -1,5 +1,5 @@
 {
-  "name": "agenthub-claude-plugin",
+  "name": "agenthub-plugins",
   "version": "0.1.0",
   "private": true,
   "description": "Open AgentHub session transfer for Claude Code and Codex",
