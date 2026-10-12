@@ -1,13 +1,13 @@
-# AgentHub Claude Code plugin
+# AgentHub session transfer for Claude Code and Codex
 
-A Claude Code plugin marketplace for [Open AgentHub](https://github.com/open-agenthub/open-agenthub).
-It currently holds one plugin, **agenthub-sessions**, which moves a single session between a hub
-server and the machine you are sitting at.
+Session transfer tools for [Open AgentHub](https://github.com/open-agenthub/open-agenthub):
+the **agenthub-sessions** Claude Code plugin and a standalone Codex skill. Both bring a hub
+conversation to the machine you are sitting at; the Claude plugin also supports pushing it back.
 
 ## Why this exists at all
 
-A hub session runs in a Kubernetes pod, and the session you are talking to lives in that pod's
-`~/.claude`. Sometimes the pod is the wrong place to be: the network you need is only reachable from
+A hub session runs in a Kubernetes pod, and its conversation lives in that pod's agent home
+directory (`~/.claude` or `~/.codex`). Sometimes the pod is the wrong place to be: the network you need is only reachable from
 your laptop, you want an IDE on the files, or you simply want to keep working on a plane.
 
 The hub already stores what is needed. When a session pod stops, it uploads its agent home directory
