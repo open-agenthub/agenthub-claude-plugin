@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgentHub Session Transfer"
+  short_description: "Continue AgentHub Codex sessions on this machine"
+  default_prompt: "Use $agenthub-session-transfer to import an AgentHub Codex session into my local checkout."

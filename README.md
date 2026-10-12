@@ -1,13 +1,13 @@
-# AgentHub Claude Code plugin
+# AgentHub session transfer for Claude Code and Codex
 
-A Claude Code plugin marketplace for [Open AgentHub](https://github.com/open-agenthub/open-agenthub).
-It currently holds one plugin, **agenthub-sessions**, which moves a single session between a hub
-server and the machine you are sitting at.
+Session transfer tools for [Open AgentHub](https://github.com/open-agenthub/open-agenthub):
+the **agenthub-sessions** Claude Code plugin and a standalone Codex skill. Both bring a hub
+conversation to the machine you are sitting at; the Claude plugin also supports pushing it back.
 
 ## Why this exists at all
 
-A hub session runs in a Kubernetes pod, and the session you are talking to lives in that pod's
-`~/.claude`. Sometimes the pod is the wrong place to be: the network you need is only reachable from
+A hub session runs in a Kubernetes pod, and its conversation lives in that pod's agent home
+directory (`~/.claude` or `~/.codex`). Sometimes the pod is the wrong place to be: the network you need is only reachable from
 your laptop, you want an IDE on the files, or you simply want to keep working on a plane.
 
 The hub already stores what is needed. When a session pod stops, it uploads its agent home directory
@@ -41,6 +41,37 @@ Inside a Claude Code session you do not run the script yourself — ask for what
 skill handles it.
 
 ## Use it from the shell
+
+### Codex skill
+
+The repository also ships a standalone Codex import skill in
+[`codex/skills/agenthub-session-transfer`](codex/skills/agenthub-session-transfer/SKILL.md).
+Copy that complete folder into `$CODEX_HOME/skills` (default `~/.codex/skills`). It includes its
+Node helpers and needs no npm install. For example, from this checkout on macOS/Linux:
+
+```sh
+mkdir -p ~/.codex/skills
+cp -R codex/skills/agenthub-session-transfer ~/.codex/skills/
+```
+
+On PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME/.codex/skills" | Out-Null
+Copy-Item -Recurse codex/skills/agenthub-session-transfer "$HOME/.codex/skills/"
+```
+
+Use `$agenthub-session-transfer` or ask Codex to continue an AgentHub session locally. The skill
+accepts a session ID or hub `/s/<id>` URL and reuses the same AgentHub PAT configuration as the
+Claude plugin. It imports a new local Codex thread without stopping the hub session or replacing
+existing local work, then returns `codex resume <local-uuid>` for the chosen checkout. A running
+session's stored snapshot may lag behind its latest turns. Desktop sidebar discovery is separate
+from writing a rollout; opening the imported thread in Codex may be needed first.
+
+This Codex skill currently supports import only, not push. Archives do not install MCP servers or
+copy credentials. Attachment access uses the original hub session ID with AgentHub's file MCP.
+
+### Claude CLI
 
 ```bash
 agenthub-session list                 # sessions on the hub

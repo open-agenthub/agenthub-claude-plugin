@@ -2,10 +2,10 @@
   "name": "agenthub-claude-plugin",
   "version": "0.1.0",
   "private": true,
-  "description": "Claude Code plugin marketplace for Open AgentHub",
+  "description": "Open AgentHub session transfer for Claude Code and Codex",
   "license": "Apache-2.0",
   "scripts": {
-    "test": "node --test \"plugins/agenthub-sessions/scripts/test/*.test.mjs\""
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
