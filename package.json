@@ -5,7 +5,7 @@
   "description": "Claude Code plugin marketplace for Open AgentHub",
   "license": "Apache-2.0",
   "scripts": {
-    "test": "node --test \"plugins/agenthub-sessions/scripts/test/*.test.mjs\""
+    "test": "node --test \"plugins/agenthub-sessions/scripts/test/*.test.mjs\" \"codex/skills/agenthub-session-transfer/scripts/test/*.test.mjs\""
   },
   "engines": {
     "node": ">=20"

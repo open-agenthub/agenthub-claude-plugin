@@ -42,6 +42,37 @@ skill handles it.
 
 ## Use it from the shell
 
+### Codex skill
+
+The repository also ships a standalone Codex import skill in
+[`codex/skills/agenthub-session-transfer`](codex/skills/agenthub-session-transfer/SKILL.md).
+Copy that complete folder into `$CODEX_HOME/skills` (default `~/.codex/skills`). It includes its
+Node helpers and needs no npm install. For example, from this checkout on macOS/Linux:
+
+```sh
+mkdir -p ~/.codex/skills
+cp -R codex/skills/agenthub-session-transfer ~/.codex/skills/
+```
+
+On PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force "$HOME/.codex/skills" | Out-Null
+Copy-Item -Recurse codex/skills/agenthub-session-transfer "$HOME/.codex/skills/"
+```
+
+Use `$agenthub-session-transfer` or ask Codex to continue an AgentHub session locally. The skill
+accepts a session ID or hub `/s/<id>` URL and reuses the same AgentHub PAT configuration as the
+Claude plugin. It imports a new local Codex thread without stopping the hub session or replacing
+existing local work, then returns `codex resume <local-uuid>` for the chosen checkout. A running
+session's stored snapshot may lag behind its latest turns. Desktop sidebar discovery is separate
+from writing a rollout; opening the imported thread in Codex may be needed first.
+
+This Codex skill currently supports import only, not push. Archives do not install MCP servers or
+copy credentials. Attachment access uses the original hub session ID with AgentHub's file MCP.
+
+### Claude CLI
+
 ```bash
 agenthub-session list                 # sessions on the hub
 agenthub-session pull <session-id>    # bring one into this directory
