@@ -5,7 +5,7 @@
   "description": "Open AgentHub session transfer for Claude Code and Codex",
   "license": "Apache-2.0",
   "scripts": {
-    "test": "node --test \"plugins/agenthub-sessions/scripts/test/*.test.mjs\" \"codex/skills/agenthub-session-transfer/scripts/test/*.test.mjs\""
+    "test": "node --test"
   },
   "engines": {
     "node": ">=20"
